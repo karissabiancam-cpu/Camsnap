@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CamSnap Vibe - Web Cam Filter & Photobooth</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .filter-normal {
+            filter: none;
+        }
+
+        .filter-goofy {
+            filter: invert(0.8) hue-rotate(180deg) contrast(150%);
+        }
+
+        .filter-vintage {
+            filter: sepia(0.8) contrast(120%);
+        }
+
+        .filter-grayscale {
+            filter: grayscale(100%);
+        }
+
+        /* explicit display control so Tailwind's hidden/flex can't fight each other */
+        #countdown {
+            display: none;
+        }
+
+        #countdown.show {
+            display: flex;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans p-6">
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-extrabold text-rose-600">📸 CamSnap Vibe</h1>
+            <p class="text-sm text-slate-500">HCI & Platform Tech Capstone Project</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="md:col-span-2 space-y-4">
+                <div class="relative bg-black rounded-xl overflow-hidden aspect-video flex items-center justify-center">
+                    <video id="webcam" autoplay playsinline muted
+                        class="w-full h-full object-cover filter-normal transform -scale-x-100"></video>
+
+                    <!-- placeholder shown before the camera starts -->
+                    <div id="camPlaceholder"
+                        class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 text-sm gap-2">
+                        <span class="text-4xl">📷</span>
+                        <span>Camera is off</span>
+                    </div>
+
+                    <div id="countdown"
+                        class="absolute inset-0 text-6xl font-black text-white bg-black/50 items-center justify-center">
+                        3</div>
+                </div>
+
+                <!-- camera controls -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <button id="btnCam" onclick="startCamera()"
+                        class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow">
+                        🎥 Turn On Camera
+                    </button>
+                    <button id="btnStopCam" onclick="stopCamera()" disabled
+                        class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg disabled:opacity-40">
+                        ⏹ Stop
+                    </button>
+                    <p id="camStatus" class="text-xs text-slate-500">Camera permission is needed before you can snap.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Filters</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="applyFilter('normal')"
+                            class="py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold">Normal</button>
+                        <button onclick="applyFilter('goofy')"
+                            class="py-2 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg text-xs font-bold">🤪
+                            Goofy</button>
+                        <button onclick="applyFilter('vintage')"
+                            class="py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg text-xs font-bold">📜
+                            Vintage</button>
+                        <button onclick="applyFilter('grayscale')"
+                            class="py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-xs font-bold">🎬 B&W</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Stickers</label>
+                    <div class="flex gap-2">
+                        <button onclick="setSticker('🕶️')"
+                            class="p-2 bg-slate-100 hover:bg-amber-100 rounded-lg text-xl">🕶️</button>
+                        <button onclick="setSticker('👑')"
+                            class="p-2 bg-slate-100 hover:bg-amber-100 rounded-lg text-xl">👑</button>
+                        <button onclick="setSticker('🎉')"
+                            class="p-2 bg-slate-100 hover:bg-amber-100 rounded-lg text-xl">🎉</button>
+                        <button onclick="setSticker('')"
+                            class="px-3 py-2 bg-slate-200 text-xs font-bold rounded-lg text-slate-600">Clear</button>
+                    </div>
+                </div>
+
+                <button id="btnCapture" onclick="startPhotobooth()" disabled
+                    class="w-full py-3 bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-md transition">
+                    📸 Take 3-Photo Strip
+                </button>
+            </div>
+
+            <div class="flex flex-col items-center bg-rose-50 p-4 rounded-xl border border-rose-100">
+                <h3 class="text-sm font-bold text-rose-700 mb-3">Photo Strip</h3>
+                <div class="space-y-2 w-full max-w-[180px]">
+                    <div id="slot1"
+                        class="aspect-video bg-slate-200 rounded flex items-center justify-center text-xs text-slate-400">
+                        Photo 1</div>
+                    <div id="slot2"
+                        class="aspect-video bg-slate-200 rounded flex items-center justify-center text-xs text-slate-400">
+                        Photo 2</div>
+                    <div id="slot3"
+                        class="aspect-video bg-slate-200 rounded flex items-center justify-center text-xs text-slate-400">
+                        Photo 3</div>
+                </div>
+                <button id="btnDownload" onclick="downloadStrip()" disabled
+                    class="w-full mt-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow">
+                    💾 Save Strip (.PNG)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas" class="hidden"></canvas>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const countdownEl = document.getElementById('countdown');
+        const btnDownload = document.getElementById('btnDownload');
+        const btnCapture = document.getElementById('btnCapture');
+        const btnCam = document.getElementById('btnCam');
+        const btnStopCam = document.getElementById('btnStopCam');
+        const camStatus = document.getElementById('camStatus');
+        const camPlaceholder = document.getElementById('camPlaceholder');
+
+        let currentFilter = 'normal';
+        let currentSticker = '';
+        let capturedImages = [];
+        let stream = null;
+        let busy = false;
+
+        /* ---------- filter helpers (single source of truth) ---------- */
+        const CANVAS_FILTERS = {
+            normal: 'none',
+            goofy: 'invert(0.8) hue-rotate(180deg) contrast(150%)',
+            vintage: 'sepia(0.8) contrast(120%)',
+            grayscale: 'grayscale(100%)'
+        };
+
+        function applyFilter(filter) {
+            currentFilter = filter;
+            video.className =
+                `w-full h-full object-cover filter-${filter} transform -scale-x-100`;
+        }
+
+        function setSticker(emoji) {
+            currentSticker = emoji;
+        }
+
+        /* ---------- Platform Tech: WebRTC camera access ---------- */
+        async function startCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                camStatus.textContent =
+                    'Camera API not supported here. Use a modern browser over HTTPS or localhost.';
+                camStatus.className = 'text-xs text-rose-600 font-semibold';
+                return;
+            }
+
+            btnCam.disabled = true;
+            camStatus.textContent = 'Requesting camera permission…';
+            camStatus.className = 'text-xs text-slate-500';
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+
+                video.srcObject = stream;
+                await video.play().catch(() => { /* autoplay quirks are harmless */ });
+
+                camPlaceholder.classList.add('hidden');
+                btnStopCam.disabled = false;
+                btnCapture.disabled = false;
+                camStatus.textContent = 'Camera ready — strike a pose!';
+                camStatus.className = 'text-xs text-emerald-600 font-semibold';
+            } catch (err) {
+                btnCam.disabled = false;
+
+                const messages = {
+                    NotAllowedError: 'Permission denied. Click the camera icon in the address bar and allow access.',
+                    NotFoundError: 'No camera found on this device.',
+                    NotReadableError: 'Camera is in use by another app or tab.',
+                    OverconstrainedError: 'Requested camera settings are not supported.',
+                    SecurityError: 'Blocked for security reasons. Serve this page over HTTPS or localhost.'
+                };
+
+                camStatus.textContent = messages[err.name] || ('Could not start camera: ' + err.message);
+                camStatus.className = 'text-xs text-rose-600 font-semibold';
+            }
+        }
+
+        function stopCamera() {
+            if (!stream) return;
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+            video.srcObject = null;
+
+            camPlaceholder.classList.remove('hidden');
+            btnCam.disabled = false;
+            btnStopCam.disabled = true;
+            btnCapture.disabled = true;
+            camStatus.textContent = 'Camera stopped.';
+            camStatus.className = 'text-xs text-slate-500';
+        }
+
+        /* ---------- HCI: visual feedback countdown ---------- */
+        function countdown(sec) {
+            return new Promise(resolve => {
+                countdownEl.classList.add('show');
+                countdownEl.innerText = sec;
+                let c = sec;
+
+                const timer = setInterval(() => {
+                    c--;
+                    if (c > 0) {
+                        countdownEl.innerText = c;
+                    } else {
+                        clearInterval(timer);
+                        countdownEl.classList.remove('show');
+                        resolve();
+                    }
+                }, 1000);
+            });
+        }
+
+        /* ---------- Platform Tech: HTML5 canvas frame processing ---------- */
+        function captureFrame() {
+            const w = video.videoWidth || 640;
+            const h = video.videoHeight || 480;
+
+            canvas.width = w;
+            canvas.height = h;
+
+            // mirror the preview so the saved photo matches what the user sees
+            ctx.save();
+            ctx.filter = CANVAS_FILTERS[currentFilter] || 'none';
+            ctx.translate(w, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, w, h);
+            ctx.restore();
+
+            // sticker drawn after the mirror reset so the emoji isn't flipped
+            if (currentSticker) {
+                ctx.font = `${Math.round(h * 0.15)}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(currentSticker, w / 2, h / 2);
+            }
+
+            return canvas.toDataURL('image/png');
+        }
+
+        async function startPhotobooth() {
+            if (!stream || busy) return;
+
+            busy = true;
+            btnCapture.disabled = true;
+            btnDownload.disabled = true;
+            capturedImages = [];
+
+            try {
+                for (let i = 1; i <= 3; i++) {
+                    await countdown(3);
+                    const dataUrl = captureFrame();
+                    capturedImages.push(dataUrl);
+
+                    document.getElementById(`slot${i}`).innerHTML =
+                        `<img src="${dataUrl}" alt="Photo ${i}" class="w-full h-full object-cover rounded shadow">`;
+                }
+                btnDownload.disabled = false;
+            } finally {
+                busy = false;
+                btnCapture.disabled = false;
+            }
+        }
+
+        /* ---------- export the 3-photo strip ---------- */
+        function loadImage(src) {
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = src;
+            });
+        }
+
+        // cover-fit so photos aren't stretched
+        function drawCover(c, img, x, y, w, h) {
+            const scale = Math.max(w / img.width, h / img.height);
+            const dw = img.width * scale;
+            const dh = img.height * scale;
+            c.save();
+            c.beginPath();
+            c.rect(x, y, w, h);
+            c.clip();
+            c.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+            c.restore();
+        }
+
+        async function downloadStrip() {
+            if (capturedImages.length < 3) return;
+
+            const W = 600, H = 1400;
+            const outCanvas = document.createElement('canvas');
+            outCanvas.width = W;
+            outCanvas.height = H;
+            const oCtx = outCanvas.getContext('2d');
+
+            oCtx.fillStyle = '#fff1f2';
+            oCtx.fillRect(0, 0, W, H);
+
+            const imgs = await Promise.all(capturedImages.map(loadImage));
+
+            imgs.forEach((img, idx) => {
+                if (!img) return;
+                drawCover(oCtx, img, 30, 30 + idx * 430, 540, 400);
+            });
+
+            oCtx.fillStyle = '#e11d48';
+            oCtx.font = 'bold 28px Arial';
+            oCtx.textAlign = 'center';
+            oCtx.textBaseline = 'alphabetic';
+            oCtx.fillText('CamSnap Vibe • 2026', W / 2, 1360);
+
+            const a = document.createElement('a');
+            a.download = 'camsnap-strip.png';
+            a.href = outCanvas.toDataURL('image/png');
+            a.click();
+        }
+    </script>
+</body>
